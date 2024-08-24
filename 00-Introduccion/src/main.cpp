@@ -55,7 +55,7 @@ Box boxCesped;
 Box boxWalls;
 Box boxHighway;
 Box boxLandingPad;
-Sphere esfera1(10, 10);
+Sphere esfera1(20,20);
 // Models complex instances
 Model modelRock;
 Model modelAircraft;
@@ -189,11 +189,11 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(0);
 
-	glfwSetWindowSizeCallback(window, reshapeCallback);
-	glfwSetKeyCallback(window, keyCallback);
-	glfwSetCursorPosCallback(window, mouseCallback);
-	glfwSetMouseButtonCallback(window, mouseButtonCallback);
-	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+	glfwSetWindowSizeCallback(window, reshapeCallback); //Para redimensionar
+	glfwSetKeyCallback(window, keyCallback); //Para teclado
+	glfwSetCursorPosCallback(window, mouseCallback); //Para mouse
+	glfwSetMouseButtonCallback(window, mouseButtonCallback); //Para el clic mouse
+	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE); //Para que se mantenga presionado
 
 	// Init glew
 	glewExperimental = GL_TRUE;
@@ -231,8 +231,9 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	boxLandingPad.init();
 	boxLandingPad.setShader(&shaderMulLighting);
 
-	esfera1.init();
-	esfera1.setShader(&shaderMulLighting);
+	esfera1.init(); //Inicializar el objeto
+	esfera1.setShader(&shaderMulLighting); //Asignar el shader
+	esfera1.setScale(glm::vec3(3.0f,3.0f,3.0f)); //Escala del objeto
 
 	modelRock.loadModel("../models/rock/rock.obj");
 	modelRock.setShader(&shaderMulLighting);
@@ -429,19 +430,36 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	// Libera la memoria de la textura
 	textureHighway.freeImage();
 
-	// Definiendo la textura
-	Texture textureLandingPad("../Textures/landingPad.jpg");
+	// Definiendo la textura con su ruta
+	Texture textureLandingPad("../Textures/landingPad.jpg"); //Ruta relativa
 	textureLandingPad.loadImage(); // Cargar la textura
+	//Se usa una biblioteca de terceros por los diversos formatos de imagen
 	glGenTextures(1, &textureLandingPadID); // Creando el id de la textura del landingpad
 	glBindTexture(GL_TEXTURE_2D, textureLandingPadID); // Se enlaza la textura
+
+	//Se configura la textura, la i del final es para indicar que es un entero
+	//Las texturas se definen con las coordenadas UV como ST
+	//GL_REPEAT: Se repite la textura si se sale de las coordenadas UV
+	//GL_CLAMP_TO_EDGE: Se coloca el borde de la textura si se sale de las coordenadas UV
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Wrapping en el eje v
+
+	// Se define cómo se quiere que se vea la textura se filtre con la cercanía
+	//GL_MIN_FILTER: Se define cuando la textura es a baja resolución
+	//GL_MAG_FILTER: Se define cuando la textura es a alta resolución
+	//GL_LINEAR: Se define que se interpole entre los pixeles, provocando un blur
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
+
+	// Verificar si se pudo abrir la textura
 	if(textureLandingPad.getData()){
 		// Transferir los datos de la imagen a la tarjeta
-		glTexImage2D(GL_TEXTURE_2D, 0, textureLandingPad.getChannels() == 3 ? GL_RGB : GL_RGBA, textureLandingPad.getWidth(), textureLandingPad.getHeight(), 0,
-		textureLandingPad.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureLandingPad.getData());
+		// GL_RGB Y GL_RGBA: Se define que la textura es de 3 canales o 4 canales
+		glTexImage2D(GL_TEXTURE_2D, 0, textureLandingPad.getChannels() == 3 ? GL_RGB : GL_RGBA, textureLandingPad.getWidth(), 
+		textureLandingPad.getHeight(), 0, textureLandingPad.getChannels() == 3 ? GL_RGB : GL_RGBA, 
+		GL_UNSIGNED_BYTE, textureLandingPad.getData());
+		
+		//Genera Minmaps
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else 
@@ -838,13 +856,17 @@ void applicationLoop() {
 		/*******************************************
 		 * Esfera 1
 		*********************************************/
+	 	//Activa la textura 0 del modelo, podria tener más texturas
 		glActiveTexture(GL_TEXTURE0);
+		//Define el tipo de textura y su identificador
 		glBindTexture(GL_TEXTURE_2D, textureHighwayID);
+		//Para esto debe verse el nombre de variable que usa el shader
 		shaderMulLighting.setInt("texture1", 0);
-		esfera1.setScale(glm::vec3(3.0, 3.0, 3.0));
-		esfera1.setPosition(glm::vec3(3.0f, 2.0f, -10.0f));
-		esfera1.render();
+		esfera1.setScale(glm::vec3(3.0f,3.0f,3.0f)); //Escala del objeto
+		esfera1.setPosition(glm::vec3(3.0f,2.0f,-10.0f)); //Posicion del objeto
+		esfera1.render(); //Renderiza la esfera
 
+		
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureWallID);
 		shaderMulLighting.setInt("texture1", 0);
@@ -852,21 +874,31 @@ void applicationLoop() {
 		esfera1.setPosition(glm::vec3(3.0f, 2.0f, 10.0f));
 		esfera1.enableWireMode();
 		esfera1.render();
-		esfera1.enableFillMode();
+		
+		esfera1.enableFillMode(); // Regresa al modo normal para que en un segundo ciclo
+		//la primer esfera no se renderice en wire mode
+
+		
 
 		/******************************************
 		 * Landing pad
 		*******************************************/
+		//Definir las propiedades del landing pad
 		boxLandingPad.setScale(glm::vec3(10.0f, 0.05f, 10.0f));
 		boxLandingPad.setPosition(glm::vec3(5.0f, 0.05f, -5.0f));
 		boxLandingPad.setOrientation(glm::vec3(0.0f, 0.0f, 0.0f));
+		//Asignar texturas
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureLandingPadID);
+		//Asignar la textura al shader
 		shaderMulLighting.setInt("texture1", 0);
+		//Escalar la textura
 		shaderMulLighting.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(2.0, 2.0)));
-		boxLandingPad.render();
+		boxLandingPad.render(); //Renderizar el landing pad
+
+		//Se reescala la textura a su tamaño original
 		shaderMulLighting.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(1.0, 1.0)));
-		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindTexture(GL_TEXTURE_2D, 0); //Se libera la textura
 
 		/*******************************************
 		 * Custom objects obj
