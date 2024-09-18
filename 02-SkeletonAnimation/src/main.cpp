@@ -163,6 +163,9 @@ int numPasosBuzz = 0;
 // Var animate helicopter
 float rotHelHelY = 0.0;
 float rotHelHelBack = 0.0;
+int stateHeli = 0;
+float descenso = -0.02;
+float ac_ang = -0.003;
 
 // Var animate lambo dor
 int stateDoor = 0;
@@ -762,6 +765,8 @@ void applicationLoop() {
 	float rotCount = 0.0;
 	float rotWheelsX = 0.0;
 	float rotWheelsY = 0.0;
+	float descensoCount = 0.0;
+	float rotHelDelta = 0.5;
 	int numberAdvance = 0;
 	int maxAdvance = 0.0;
 
@@ -1006,10 +1011,10 @@ void applicationLoop() {
 		modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, 0.249548));
 		modelHeliHeli.render(modelMatrixHeliHeli);
 		glm::mat4 modelMatrixHeliHeliBack = glm::mat4(modelMatrixHeliChasis);
-		modelMatrixHeliHeliBack = glm::translate(modelMatrixHeliHeliBack, glm::vec3(0.400524, 2.0928, -5.64124));
-		modelMatrixHeliHeliBack = glm::rotate(modelMatrixHeliHeliBack, rotHelHelBack, glm::vec3(1.0, 0.0, 0.0));
-		modelMatrixHeliHeliBack = glm::translate(modelMatrixHeliHeliBack, glm::vec3(-0.400524, -2.0928, 5.64124));
-		modelHeliHeliBack.render(modelMatrixHeliHeliBack);
+		//modelMatrixHeliHeliBack = glm::translate(modelMatrixHeliHeliBack, glm::vec3(0.400524, 2.0928, -5.64124));
+		//modelMatrixHeliHeliBack = glm::rotate(modelMatrixHeliHeliBack, rotHelHelBack, glm::vec3(1.0, 1.0, 0.0));
+		//modelMatrixHeliHeliBack = glm::translate(modelMatrixHeliHeliBack, glm::vec3(-0.400524, -2.0928, 5.64124));
+		//modelHeliHeliBack.render(modelMatrixHeliHeliBack);
 
 		// Lambo car
 		glDisable(GL_CULL_FACE);
@@ -1303,8 +1308,51 @@ void applicationLoop() {
 		}
 
 		// Constantes de animaciones
-		rotHelHelY += 0.5;
+		rotHelHelY += rotHelDelta; //Es el incremento en grados por cada frame, es variable
 		rotHelHelBack += 0.5;
+		//Máquina de estados del helicoptero
+		switch (stateHeli)
+		{
+		case 0: //Desplazamiento vertical
+			modelMatrixHeli = glm::translate(modelMatrixHeli,glm::vec3(0,descenso,0));
+			descensoCount += descenso; //Desplaza el helicoptero
+			//std::cout << descensoCount << std::endl;
+			if(descensoCount < -10||descensoCount>0){ //Si termina fuera del rango (llegó hasta abajo o hasta arriba) cambia
+				stateHeli = 1;
+			}
+			break;
+		case 1: //Cambio de sentido
+			if(descenso<0){
+				stateHeli = 2; //Va al estado donde frenan las hélices
+			}else{
+				stateHeli = 0;
+			}
+			descenso = descenso*-1; //Cambia el sentido del desplazamiento
+			break;
+		case 2: //Encendido y Apagado helicoptero
+			rotHelDelta += ac_ang; //Cambia el incremento, es decir, es una acelereación
+			if(rotHelDelta<0){
+				ac_ang = ac_ang*-1; //Una vez termine de frenar, cambia al siguiente estado
+				stateHeli = 3;
+			}
+			break;
+		case 3:
+			rotHelDelta += ac_ang; //Comienza a acelerar
+			if(rotHelDelta>0.5){ 
+				ac_ang = ac_ang*-1; 
+				stateHeli = 0;
+			}
+			break;
+		default:
+			std::cout << "Error en controlar helicoptero"<< std::endl;
+			break;
+		}
+		
+
+
+
+
+
 
 		glfwSwapBuffers(window);
 	}

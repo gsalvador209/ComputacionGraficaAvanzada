@@ -52,47 +52,31 @@ uniform DirectionalLight directionalLight;
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 
-uniform vec3 viewPos;
-  
-uniform vec2 scaleUV;  
-  
-uniform sampler2D backgroundTexture; 
-uniform sampler2D rTexture;
-uniform sampler2D gTexture;
-uniform sampler2D bTexture;
-uniform sampler2D blendMapTexture;
+uniform vec3 viewPos;  
+uniform sampler2D texture1;
+uniform sampler2D texture2;
 
 vec3 calculateDirectionalLight(Light light, vec3 direction){
-	vec2 tiledCoords = our_uv;
-	if(tiledCoords.x != 0 && tiledCoords.y != 0)
-		tiledCoords = scaleUV * tiledCoords;
+	vec4 colorText1 = texture(texture1, our_uv);
+	vec4 colorText2 = texture(texture2, our_uv);
 
-	vec4 blendMapColor = texture(blendMapTexture,our_uv); //Recupera el color, hay do uv, una para el tamaño completo del terreno y otra no
-	float backTextureAmount = 1 -(blendMapColor.r + blendMapColor.g + blendMapColor.b);
-	vec4 backgroundTextureColor = texture(backgroundTexture, tiledCoords)*backTextureAmount; //Estas cordenadas UV se repiten
-	vec4 rTextureColor = texture(rTexture,tiledCoords)*blendMapColor.r;
-	vec4 gTextureColor = texture(gTexture,tiledCoords)*blendMapColor.g;
-	vec4 bTextureColor = texture(bTexture,tiledCoords)*blendMapColor.b;
-	vec4 totalColor = backgroundTextureColor + rTextureColor + gTextureColor + bTextureColor;
-
-	//vec4 backgroundTextureColor = texture(backgroundTexture, tiledCoords);
-	//vec4 totalColor = backgroundTextureColor;
+	vec4 colorMix = mix(colorText1,colorText2,0.5); //Hace una interpolacion (suma ponderada)
 
 	// Ambient
-    vec3 ambient  = light.ambient * vec3(totalColor);
+    vec3 ambient  = light.ambient * vec3(colorMix);
   	
     // Diffuse 
     vec3 normal = normalize(our_normal);
     vec3 lightDir = normalize(-direction);
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse  = light.diffuse * (diff * vec3(totalColor));
+    vec3 diffuse  = light.diffuse * (diff * vec3(colorMix));
     
     // Specular
     float specularStrength = 0.5f;
     vec3 viewDir = normalize(viewPos - fragPos);
     vec3 reflectDir = reflect(-lightDir, normal);  
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-    vec3 specular = light.specular * (spec * vec3(totalColor));  
+    vec3 specular = light.specular * (spec * vec3(colorMix));  
         
     return (ambient + diffuse + specular);
 }
@@ -124,5 +108,9 @@ vec3 calculateSpotLights(){
 
 void main()
 {
-    color = vec4(calculateDirectionalLight(directionalLight.light, directionalLight.direction) + calculatePointLights() + calculateSpotLights(), 1.0);
+	vec4 colorText = texture(texture1, our_uv); //La funcion es de GLSL
+	
+	if(colorText.a < 0.1)
+		discard;
+    color = vec4(calculateDirectionalLight(directionalLight.light, directionalLight.direction) + calculatePointLights() + calculateSpotLights(), colorText.a);
 }

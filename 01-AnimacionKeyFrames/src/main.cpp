@@ -47,6 +47,7 @@ Shader shader;
 Shader shaderSkybox;
 //Shader con multiples luces
 Shader shaderMulLighting;
+Shader shaderMultiLightingVariasTexturas; //Para dos texturas
 
 std::shared_ptr<FirstPersonCamera> camera(new FirstPersonCamera());
 
@@ -84,6 +85,9 @@ Model modelDartLegoRightLeg;
 
 GLuint textureCespedID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
 GLuint skyboxTextureID;
+//Agregadas
+GLuint textureWaterID,textureSpongeID;
+
 
 GLenum types[6] = {
 GL_TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -121,6 +125,9 @@ bool saveFrame = false, availableSave = true;
 std::ofstream myfile;
 std::string fileName = "";
 bool record = false;
+float avance = 0.1; //Define el desplazamiento [u/frame]
+float giroEclipse = 1.0; //Define el giro [º/frame]
+
 
 // Joints interpolations Dart Lego
 std::vector<std::vector<float>> keyFramesDartJoints;
@@ -213,6 +220,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	shader.initialize("../Shaders/colorShader.vs", "../Shaders/colorShader.fs");
 	shaderSkybox.initialize("../Shaders/skyBox.vs", "../Shaders/skyBox.fs");
 	shaderMulLighting.initialize("../Shaders/iluminacion_texture_res.vs", "../Shaders/multipleLights.fs");
+	shaderMultiLightingVariasTexturas.initialize("../Shaders/iluminacion_texture_res.vs","../Shaders/multipleLightsVariasTexturas.fs");
 
 	// Inicializacion de los objetos.
 	skyboxSphere.init();
@@ -232,7 +240,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	boxLandingPad.setShader(&shaderMulLighting);
 
 	esfera1.init();
-	esfera1.setShader(&shaderMulLighting);
+	esfera1.setShader(&shaderMultiLightingVariasTexturas);
 
 	modelRock.loadModel("../models/rock/rock.obj");
 	modelRock.setShader(&shaderMulLighting);
@@ -430,23 +438,43 @@ void init(int width, int height, std::string strTitle, bool bFullScreen) {
 	textureHighway.freeImage();
 
 	// Definiendo la textura
-	Texture textureLandingPad("../Textures/landingPad.jpg");
-	textureLandingPad.loadImage(); // Cargar la textura
-	glGenTextures(1, &textureLandingPadID); // Creando el id de la textura del landingpad
-	glBindTexture(GL_TEXTURE_2D, textureLandingPadID); // Se enlaza la textura
+	Texture textureWater("../Textures/water.jpg");
+	textureWater.loadImage(); // Cargar la textura
+	glGenTextures(1, &textureWaterID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, textureWaterID); // Se enlaza la textura
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
-	if(textureLandingPad.getData()){
+	if(textureWater.getData()){
 		// Transferir los datos de la imagen a la tarjeta
-		glTexImage2D(GL_TEXTURE_2D, 0, textureLandingPad.getChannels() == 3 ? GL_RGB : GL_RGBA, textureLandingPad.getWidth(), textureLandingPad.getHeight(), 0,
-		textureLandingPad.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureLandingPad.getData());
+		glTexImage2D(GL_TEXTURE_2D, 0, textureWater.getChannels() == 3 ? GL_RGB : GL_RGBA, textureWater.getWidth(), textureWater.getHeight(), 0,
+		textureWater.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureWater.getData());
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else 
 		std::cout << "Fallo la carga de textura" << std::endl;
-	textureLandingPad.freeImage(); // Liberamos memoria
+	textureWater.freeImage(); // Liberamos memoria
+
+	// Definiendo la textura
+	Texture textureSponge("../Textures/test.png");
+	textureSponge.loadImage(); // Cargar la textura
+	glGenTextures(1, &textureSpongeID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, textureSpongeID); // Se enlaza la textura
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
+	if(textureSponge.getData()){
+		// Transferir los datos de la imagen a la tarjeta
+		glTexImage2D(GL_TEXTURE_2D, 0, textureSponge.getChannels() == 3 ? GL_RGB : GL_RGBA, textureSponge.getWidth(), textureSponge.getHeight(), 0,
+		textureSponge.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureSponge.getData());
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else 
+		std::cout << "Fallo la carga de textura" << std::endl;
+	textureSponge.freeImage(); // Liberamos memoria
+
 
 }
 
@@ -459,6 +487,7 @@ void destroy() {
 	// Shaders Delete
 	shader.destroy();
 	shaderMulLighting.destroy();
+	shaderMultiLightingVariasTexturas.destroy();
 	shaderSkybox.destroy();
 
 	// Basic objects Delete
@@ -554,7 +583,7 @@ bool processInput(bool continueApplication) {
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		camera->moveFrontCamera(true, deltaTime);
+		camera->moveFrontCamera(true, 6*deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 		camera->moveFrontCamera(false, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
@@ -725,6 +754,13 @@ void applicationLoop() {
 		shaderMulLighting.setMatrix4("view", 1, false,
 				glm::value_ptr(view));
 
+		// Settea la matriz de vista de proyeccion al shader
+		shaderMultiLightingVariasTexturas.setMatrix4(("projection"),1,false,
+				glm::value_ptr(projection));
+		shaderMultiLightingVariasTexturas.setMatrix4(("view"), 1, false,
+				glm::value_ptr(view));
+
+
 		/*******************************************
 		 * Propiedades Luz direccional
 		 *******************************************/
@@ -734,15 +770,24 @@ void applicationLoop() {
 		shaderMulLighting.setVectorFloat3("directionalLight.light.specular", glm::value_ptr(glm::vec3(0.9, 0.9, 0.9)));
 		shaderMulLighting.setVectorFloat3("directionalLight.direction", glm::value_ptr(glm::vec3(-1.0, 0.0, 0.0)));
 
+		shaderMultiLightingVariasTexturas.setVectorFloat3("viewPos", glm::value_ptr(camera->getPosition()));
+		shaderMultiLightingVariasTexturas.setVectorFloat3("directionalLight.light.ambient", glm::value_ptr(glm::vec3(0.3, 0.3, 0.3)));
+		shaderMultiLightingVariasTexturas.setVectorFloat3("directionalLight.light.diffuse", glm::value_ptr(glm::vec3(0.7, 0.7, 0.7)));
+		shaderMultiLightingVariasTexturas.setVectorFloat3("directionalLight.light.specular", glm::value_ptr(glm::vec3(0.9, 0.9, 0.9)));
+		shaderMultiLightingVariasTexturas.setVectorFloat3("directionalLight.direction", glm::value_ptr(glm::vec3(-1.0, 0.0, 0.0)));
+
+
 		/*******************************************
 		 * Propiedades SpotLights
 		 *******************************************/
 		shaderMulLighting.setInt("spotLightCount", 0);
-
+		shaderMultiLightingVariasTexturas.setInt("spotLightCount", 0);
+		
 		/*******************************************
 		 * Propiedades PointLights
 		 *******************************************/
 		shaderMulLighting.setInt("pointLightCount", 0);
+		shaderMultiLightingVariasTexturas.setInt("pointLightCount", 0);
 
 		/*******************************************
 		 * Cesped
@@ -840,8 +885,13 @@ void applicationLoop() {
 		 * Esfera 1
 		*********************************************/
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textureHighwayID);
-		shaderMulLighting.setInt("texture1", 0);
+		glBindTexture(GL_TEXTURE_2D, textureWaterID);
+		shaderMultiLightingVariasTexturas.setInt("texture1", 0);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D,textureSpongeID);
+		shaderMultiLightingVariasTexturas.setInt("texture2",1);
+
 		esfera1.setScale(glm::vec3(3.0, 3.0, 3.0));
 		esfera1.setPosition(glm::vec3(3.0f, 2.0f, -10.0f));
 		esfera1.render();
@@ -885,6 +935,8 @@ void applicationLoop() {
 		modelMatrixEclipseChasis = glm::scale(modelMatrixEclipse, glm::vec3(0.5, 0.5, 0.5));
 		modelEclipseChasis.render(modelMatrixEclipseChasis);
 
+		//Invertir las traslaciones para poder rotar
+		//1. 
 		glm::mat4 modelMatrixFrontalWheels = glm::mat4(modelMatrixEclipseChasis);
 		modelMatrixFrontalWheels = glm::translate(modelMatrixFrontalWheels, glm::vec3(0.0, 1.05813, 4.11483 ));
 		modelMatrixFrontalWheels = glm::rotate(modelMatrixFrontalWheels, rotWheelsY, glm::vec3(0, 1, 0));
@@ -899,10 +951,10 @@ void applicationLoop() {
 		modelEclipseRearWheels.render(modelMatrixRearWheels);
 
 		// Helicopter
-		glm::mat4 modelMatrixHeliChasis = glm::mat4(modelMatrixHeli);
+		glm::mat4 modelMatrixHeliChasis = glm::mat4(modelMatrixHeli); //El chasis se posiciona donde se desea
 		modelHeliChasis.render(modelMatrixHeliChasis);
 
-		glm::mat4 modelMatrixHeliHeli = glm::mat4(modelMatrixHeliChasis);
+		glm::mat4 modelMatrixHeliHeli = glm::mat4(modelMatrixHeliChasis); //El chasis es el modelo padre
 		modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, -0.249548));
 		modelMatrixHeliHeli = glm::rotate(modelMatrixHeliHeli, rotHelHelY, glm::vec3(0, 1, 0));
 		modelMatrixHeliHeli = glm::translate(modelMatrixHeliHeli, glm::vec3(0.0, 0.0, 0.249548));
@@ -994,8 +1046,115 @@ void applicationLoop() {
 		glCullFace(oldCullFaceMode);
 		glDepthFunc(oldDepthFuncMode);
 
-		// Constantes de animaciones
-		rotHelHelY += 0.5;
+		// if(record & modelSelected == 1){ //Graba las trasnformaciones
+		// 	matrixDartJoints.push_back(rotDartHead);
+		// 	matrixDartJoints.push_back(rotDartLeftArm);
+		// 	matrixDartJoints.push_back(rotDartLeftHand);
+		// 	matrixDartJoints.push_back(rotDartRightArm);
+		// 	matrixDartJoints.push_back(rotDartRightHand);
+		// 	matrixDartJoints.push_back(rotDartLeftLeg);
+		// 	matrixDartJoints.push_back(rotDartRightLeg);
+		// 	if(saveFrame){
+		// 		saveFrame = false; //Evita que se guarden todos los frames a partir de enter
+		// 		appendFrame(myfile,matrixDartJoints); //Graba las rotaciones en animaciones/animation_dart_joins
+		// 	}
+		// }
+		//GRABAR: 
+		//SELECCIONAR MODELO CON TAB
+		//SHIFT  R
+		//HACER POSICION
+		//ENTER
+		//FINALIZAR CON R
+		// else if(keyFramesDartJoints.size()>0){
+		// 	interpolationDartJoints = numPasosDartJoints / (float) maxNumPasosDartJoints;
+		// 	numPasosDartJoints++;
+		// 	if(interpolationDartJoints > 1.0){
+		// 		interpolationDartJoints = 0;
+		// 		numPasosDartJoints = 0;
+		// 		indexFrameDartJoints = indexFrameDartJointsNext;
+		// 		indexFrameDartJointsNext++;
+		// 	}
+		// 	if(indexFrameDartJointsNext > keyFramesDartJoints.size()-1){
+		// 		indexFrameDartJoints = 0;
+		// 	}
+		// 	rotDartHead = interpolate(keyFramesDartJoints,indexFrameDartJoints,
+		// 	indexFrameDartJointsNext,0,interpolationDartJoints); //El indice es el numero de pipes que omite en el archivo
+			
+		// }
+
+
+		// // Constantes de animaciones
+		// rotHelHelY += 0.5;
+		// //std::cout << state;
+		// //********Maquina de estados******** */
+		// switch (state){
+		// 	case 0: //El estado cero solo define la distancia que se va a recorrer
+		// 		if(numberAdvance == 0) //NumberAdvance indicar el segmento de recta
+		// 			maxAdvance = 64.0; //maxAdvance indicar la distancia que se recorrera
+		// 		else if(numberAdvance == 1)
+		// 			maxAdvance = 50.0;
+		// 		else if(numberAdvance == 2)
+		// 			maxAdvance = 45.0;
+		// 		else if(numberAdvance == 3)
+		// 			maxAdvance = 50.0;
+		// 		else if(numberAdvance == 4)
+		// 			maxAdvance = 45.0;
+		// 		state = 1;
+		// 		break;
+		// 	case 1: //En el estado 1 avanza
+		// 		modelMatrixEclipse = glm::translate(modelMatrixEclipse, glm::vec3(0.0f, 0.0f, avance));
+		// 		advanceCount += avance;
+		// 		rotWheelsX += 0.05;
+		// 		rotWheelsY -= 0.02;
+		// 		if(rotWheelsY <= 0){
+		// 			rotWheelsY = 0;
+		// 		}
+
+		// 		if(advanceCount >= maxAdvance){
+		// 			advanceCount = 0.0;
+		// 			state = 2;
+		// 			numberAdvance++;
+		// 		}
+		// 		break;
+		// 	case 2:
+		// 		modelMatrixEclipse = glm::translate(modelMatrixEclipse,glm::vec3(0,0,0.025));
+		// 		modelMatrixEclipse = glm::rotate(modelMatrixEclipse,glm::radians(giroEclipse),glm::vec3(0.0f,1.0f,0.0f));
+		// 		rotCount += giroEclipse;
+
+		// 		rotWheelsY += 0.02;
+		// 		if(rotWheelsY>=0.25){
+		// 			rotWheelsY = 0.25;
+		// 		}
+		// 		if(rotCount >= 90){
+		// 			rotCount = 0;
+		// 			state = 0;
+					
+		// 			if(numberAdvance > 4){
+		// 				numberAdvance = 1;
+		// 			}
+		// 		}
+		// 		break;
+		// 	default:
+		// 		break;
+		// }
+
+		//******Maquina de estados de lambo*******/
+		switch(stateDoor){
+			case 0:
+				dorRotCount += 0.5;
+				if(dorRotCount> 75){
+					stateDoor = 1;
+				}
+				break;
+			case 1:
+				dorRotCount -= 0.5;
+				if(dorRotCount < 0){
+					stateDoor = 0;
+				}
+				break;
+			default:
+				break;
+		}
 
 		glfwSwapBuffers(window);
 	}
